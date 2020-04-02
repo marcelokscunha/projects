@@ -10,7 +10,7 @@ Parameters:
     Description: A name for the service
   ImageUrl:
     Type: String
-    Default: docker.io/marcelokscunha/disasterservice:0.1
+    Default: docker.io/marcelokscunha/disasterservice:0.2
     Description: The url of a docker image that contains the application process that
                  will handle the traffic for this service. If you want to use your own 
                  public image, push it to DockerHub and use the Url 

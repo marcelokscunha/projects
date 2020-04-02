@@ -1,6 +1,6 @@
 # Udacity's Disaster Response Project 
 ## Introduction
-<img src="./imgs/disaster-response.jpg" alt="Disaster Response" width="500" height="600">
+<img src="./imgs/disaster-response.jpg" alt="Disaster Response" width="80%">
 
 Source: [Figure-Eight](https://www.figure-eight.com/dataset/combined-disaster-response-data/)
 
@@ -13,7 +13,7 @@ According to [FigureEight](https://www.figure-eight.com), it's common that only 
 The project is based on the datasets provided by Figure Eight [[1]](https://www.figure-eight.com/datasets/)
 
 
-# Technologies used
+## Technologies used
 Pipelines for pre-processing the text messages and inference were created using [Scikit-Learn](https://scikit-learn.org/stable/), [XGBoost](https://xgboost.ai/) and [NLTK](https://www.nltk.org/). There were some experimental attempts with BERT using the [Scikit-Learn BERT Wrapper](https://github.com/charles9n/bert-sklearn), but due to the size of the model weren't implemented until the end. Hyperparameter optimizations using Bayesian methods were also implemented with [Optuna](https://optuna.org/) (with Tree-structured Parzen Estimators, TPE).
 
 
@@ -47,8 +47,8 @@ If you want to customize for your case, in the [`deploy_artifacts`](../deploy_ar
 You can [build the Docker image](https://docs.docker.com/get-started/part2/) and push it to your [DockerHub](https://hub.docker.com/) repository or [ECR Repository](https://aws.amazon.com/ecr/). Then, just deploy with the CloudFormation template modify to use your Docker image Repository.
 
 
-# Possible improvements (out of the scope of this project)
-- Export the database file to an actual database, in a external VM (e.g. RDS)
+## Possible improvements (out of the scope of this project)
+- Export the database file to an actual database, in a separate VM (e.g. RDS)
 - Break the app into microservices, with an API for the ML model (e.g. with SageMaker)
 - Modify BERT's head and test it
 - Optimize hyperparameters for longer, with more models (e.g. LightGBM, CatBoost, BERT, etc.)
