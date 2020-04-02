@@ -2,6 +2,7 @@ import json
 import plotly
 import pandas as pd
 import re
+from collections import defaultdict
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -9,7 +10,7 @@ from nltk.corpus import stopwords
 
 from flask import Flask
 from flask import render_template, request, jsonify
-from plotly.graph_objs import Bar
+from plotly.graph_objs import Bar, Table
 from joblib import load
 from sqlalchemy import create_engine
 
@@ -51,13 +52,25 @@ model = load(f'../models/{best_model}.joblib')
 @app.route('/')
 @app.route('/index')
 def index():
-    # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
+    # extract data needed for visual 1
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
+    # extract data needed for visual 2
+    top_k = 15
+    most_freq_categories = df.iloc[:,4:].sum(axis=0).sort_values(ascending=False)[:top_k].index.values
+    df_X = df.iloc[:,4:]
+    value_counts = defaultdict(list)
+    for col in most_freq_categories:
+        value_counts[0].append(df_X[col].value_counts()[0])
+        value_counts[1].append(df_X[col].value_counts()[1])
+        if len(df_X[col].value_counts())==3:
+            value_counts[2].append(df_X[col].value_counts()[2])
+            
+    # extract data needed for visual 3
+    df_metadata = pd.read_csv('../data/metadata.csv', sep=';')
+    
     # create visuals
-    # TODO: Below is an example - modify to create your own visuals
     graphs = [
         {
             'data': [
@@ -76,6 +89,60 @@ def index():
                     'title': "Genre"
                 }
             }
+        },
+        
+        
+        {
+            'data': [
+                Bar(
+                    x=most_freq_categories,
+                    y=value_counts[0],
+                    name='0',
+                    marker_color='indianred'
+                ),
+                Bar(
+                    x=most_freq_categories,
+                    y=value_counts[1],
+                    name='1',
+                    marker_color='lightsalmon'
+                ),
+                Bar(
+                    x=[most_freq_categories[0]],
+                    y=value_counts[2],
+                    name='2',
+                    marker_color='purple'
+                )
+            ],
+
+            'layout': {
+                'title': f'Distributions of values for the top-{top_k} Labels that appear the most (class imbalances)',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Label"
+                },
+                'barmode':'group',
+                'xaxis_tickangle':-45
+            }
+        },
+        
+        {
+            'data': [
+                Table(
+                      header=dict(
+                                values=list(df_metadata.columns),
+                                align='center',
+                                fill_color='darkslateblue',
+                                font=dict(color='White', size=14)
+                      ),
+                      cells=dict(
+                                values=[df_metadata[col] for col in df_metadata.columns],
+                                align='center',
+                                line_color='white',
+                                fill=dict(color='white')
+                      )
+                )]
         }
     ]
     

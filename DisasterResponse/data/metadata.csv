@@ -1,0 +1,40 @@
+Column;Description
+id;Unique ID for each individual row
+message;English text of actual messages related to disaster
+original;Text of column 3 in native language as originally written
+genre;Type of message, including direct messages, social posting, and news stories or bulletins
+related;Is the message disaster related? 1= yes, 2=no, 3=?
+request;Does the message contain a request? 1= yes, 2=no
+offer;Does the message contain an offer? 1= yes, 2=no
+aid_related;Is the message aid related? 1= yes, 2=no
+medical_help;Does the message concern medical help? 1= yes, 2=no
+medical_products;Does the message concern medical products? 1= yes, 2=no
+search_and_rescue;Does the message concern search and rescue? 1= yes, 2=no
+security;Does the message concern security? 1= yes, 2=no
+military;Does the message concern military? 1= yes, 2=no
+water;Does the message concern water? 1= yes, 2=no
+food;Does the message concern food? 1= yes, 2=no
+shelter;Does the message concern shelter? 1= yes, 2=no
+clothing;Does the message concern clothing? 1= yes, 2=no
+money;Does the message concern money? 1= yes, 2=no
+missing_people;Does the message concern missing people? 1= yes, 2=no
+refugees;Does the message concern refugees? 1= yes, 2=no
+death;Is the message related to death? 1= yes, 2=no
+other_aid;Is the message related to other aid? 1= yes, 2=no
+infrastructure_related; Is the message infrastructure related? 1= yes, 2=no
+transport;Does the message concern transport? 1= yes, 2=no
+buildings;Does the message concern buildings? 1= yes, 2=no
+electricity;Does the message concern electricity? 1= yes, 2=no
+tools;Does the message concern tools? 1= yes, 2=no
+hospitals;Is the message hospitals related? 1= yes, 2=no
+shops;Does the message concern shops? 1= yes, 2=no
+aid_centers;Is the message aid centers related? 1= yes, 2=no
+other_infrastructure;Is the message related to other infrastructure? 1= yes, 2=no
+weather_related;Is the message weather related? 1= yes, 2=no
+floods;Does the message concern floods? 1= yes, 2=no
+storm;Does the message concern storm? 1= yes, 2=no
+fire;Does the message concern fire? 1= yes, 2=no
+earthquake;Does the message concern earthquake? 1= yes, 2=no
+cold;Does the message concern cold? 1= yes, 2=no
+other_weather;Does the message concern other weather? 1= yes, 2=no
+direct_report;Does the message contain a direct report? 1= yes, 2=no
