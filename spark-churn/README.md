@@ -24,7 +24,7 @@ The locations of the datasets were:
 
 An overview of the schema of the dataset:
 
-<img src="./media/schema.png" alt="schema" width="60%">
+<img src="./media/schema.png" alt="schema" width="50%">
 
 An observation is that no explanation of the schema was given. However by the name of the columns and the data we can infer their meaning:
 
@@ -63,7 +63,7 @@ V. Evaluating Results
 
 VI. Deploying
 
-The final churn prediction model was developed using ensembles of models ()
+The final churn prediction model was developed using ensembles of models, Gradient-Boosted Trees and Random Forest. A pipeline for pre-processing the data, training, perform hyperparameter optimizations with grid search and perform K-fold cross validation. Functions for pre-processing and training were created.
 
 For more information on the local development: [see local development notebook](./Sparkify-local.ipynb)
 
