@@ -69,6 +69,98 @@ For more information on the local development: [see local development notebook](
 
 For more information on the development with a Spark cluster running on EMR: [see cluster development notebook](./Sparkify-cluster.ipynb)
 
+## How deploy it
+Three CloudFormation templates were developed for deploying the application:
+- a master template
+- a template for an [Amazon EMR](https://aws.amazon.com/emr/) Cluster with Spark and Ap pre-configured
+- a template for an [Amazon SageMaker](https://aws.amazon.com/sagemaker/) notebook instance with [Apache Livy](https://livy.apache.org/) pre-configured
+
+The master template will orchestrate and deploy all components, configuring security groups, running scrips to allow communication between SageMaker notebook instance and EMR cluster via Livy API, enable this GitHub repository in the SageMaker notebook instance.
+
+If you just want to deploy the project into your AWS Account, just click the button below:
+
+[![cloudformation-button](./media/cloudformation-button.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=sparkify&templateURL=https://s3.amazonaws.com/emr-sparkify/deploy_artifacts/master-emr-sagemaker-template.yaml)
+
+The default configuration will deploy in the AWS N. Virginia region:
+
+![1-cfn-config1](./media/1-cfn-config1.png)
+
+Click Next. 
+
+In `Step 2 Specify stack details` and specify a VPC to deploy the EMR cluster and SageMaker notebook instance.
+
+![2-cfn-config2](./media/2-cfn-config2.png)
+
+Be careful which instance you'd like to deploy (you are going to be [charged per second depending on the instance](https://aws.amazon.com/ec2/pricing/on-demand/)):
+
+![3-cfn-config3](./media/3-cfn-config3.png)
+
+In `Step 3 Configure stack options` just leave the default and click Next.
+
+In `Step 4 Review` scroll down.
+
+![4-cfn-review](./media/4-cfn-review.png)
+
+And click on the checkboxes, `I acknoledge...`, `I acknoledge...`. This gives permissions for CloudFormation to create policies e permissions for our stack to be provisioned in AWS.
+
+![5-cfn-checkbox](./media/5-cfn-checkbox.png)
+
+The master template will start provisioning resources. First it will configure an EMR cluster (for obtaining the master node IP). Then a third stack with the SageMaker notebook instance will be deployed (configuring Livy and communication with the EMR master node):
+
+![6-cfn-deploying](./media/6-cfn-deploying.png)
+
+Wait a few minutes and all the resources should be provisioned and configured:
+
+![7-cfn-final-create](./media/7-cfn-final-create.png)
+
+Go to the EMR service. The EMR cluster should be up and running, with the configuration you provided in the Stack (default is 1 m4.large for master node and 2 m4.large for core nodes):
+
+![8-emr](./media/8-emr.png)
+
+Go to the SageMaker service. There should be an Notebook instance provisioned and running:
+![9-sagemaker](./media/9-sagemaker.png)
+
+Click on `Open Jupyter Lab`. This GitHub repository should be configured in the notebook instance (folder called `projects`):
+
+![10-sagemaker-notebook-git](./media/10-sagemaker-notebook-git.png)
+
+Open the notebook in `projects/spark-churn/Sparkify-cluster.ipynb`. To check if connection with the EMR cluster is working use the magic command `%help`. All the options for Livy will be shown, indicating how to send commands to the Spark cluster and how to load a Spark DataFrame locally as a Pandas DataFrame (with `spark -o df`):
+
+![11-sagemaker-livy](./media/11-sagemaker-livy.png)
+
+Let's execute the cell to load data from S3, using the EMR cluster. The SageMaker notebook instance will send a command to the EMR Spark cluster and the cluster will do the heavy lifting of loading into the cluster:
+
+![12-emr-load-from-s3](./media/12-emr-load-from-s3.png)
+
+If we go back to the EMR service and see cluster Monitoring metrics by selecting our cluster, clicking on `Monitoring` and on the `IO` tab, we can see that the metric `Memory available MB` is decreasing since Spark is loading the data into memory and disk ([the default behavior of `df.persist()`](http://spark.apache.org/docs/latest/api/python/pyspark.sql.html?highlight=persist)):
+
+![13-emr-memory-usage](./media/13-emr-memory-usage.png)
+
+In the Jupyter notebook we see that the Spark cluster has loaded the data and had communicated back to the notebook (showing the Schema in the cell):
+
+![14-sagemaker-load-command](./media/14-sagemaker-load-command.png)
+
+Feel free to explore the notebooks and data!
+
+## Remember - Delete AWS resources
+To delete the created resources (and avoid unnecessary costs) in AWS just go back to your `master` CloudFormation stack and delete it:
+
+![15-cfn-delete](./media/15-cfn-delete.png)
+
+Click on Delete stack:
+
+![16-cfn-deleting](./media/16-cfn-deleting.png)
+
+It'll delete all created resources with the master CloudFormation template:
+
+![17-cfn-deleting-2](./media/17-cfn-deleting-2.png)
+
+## Costs for running app
+
+The costs are described in [EMR pricing](https://aws.amazon.com/emr/pricing/), [SageMaker pricing](https://aws.amazon.com/sagemaker/pricing/), [S3 pricing](https://aws.amazon.com/s3/pricing/) and [Free tier](https://aws.amazon.com/free). 
+
+For the default configurations showed the cost will be ~0.15 USD/hour.
+
 ## Possible improvements (out of the scope of this project)
 
 - add new features <a href="#possible-features">related to other time aggregations (e.g. weeks)</a>, related to the phase (if they are paid user, free, etc.), better process user-agent data, etc.

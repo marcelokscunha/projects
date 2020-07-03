@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a SageMaker notebook
+Parameters:
+  SageMakerInstanceType:
+    Description: The type of SageMaker notebook to be provisioned
+    Type: String
+    Default: ml.t3.medium
+    AllowedValues:
+    - ml.t3.medium
+    - ml.t3.large
+    - ml.t3.xlarge
+    - ml.t3.2xlarge
+    - ml.m5.xlarge
+    - ml.m5.2xlarge
+    - ml.m5.4xlarge
+    - ml.m5.10xlarge
+    - ml.m5.16xlarge
+    - ml.p2.xlarge
+    - ml.p2.8xlarge
+    - ml.p2.16xlarge
+    - ml.p3.2xlarge
+    - ml.p3.8xlarge
+    - ml.p3.16xlarge
+  VPCSubnet:
+    Description: Subnet in which to launch this SageMaker notebook
+    Type: AWS::EC2::Subnet::Id
+  SageMakerInstanceName:
+    Description: Name for the SageMaker notebook instance
+    Type: String
+    Default: sagegluetest
+  VPCId:
+    Description: VPC in which to launch this stack
+    Type: AWS::EC2::VPC::Id
+  SageMakerConfigName:
+    Description: Lifecycle ConfigName
+    Type: String
+    Default: gluesageconfig1
+  emrClusterName:
+    Description: EMR cluster with Glue metastore access
+    Type: String
+  SageMakerInstanceSecurityGroup:
+    Description: Security group that the SageMaker instance should be launched in
+    #Type: AWS::EC2::SecurityGroup
+    Type: String
+Resources: 
+  StepFunctionsExecutionRolePytorch: 
+    # Only for demo purposes, creating role for using hard-coded name (verify if makes sense since it limits re-use of this template in other AWS regions)
+    Type: "AWS::IAM::Role"
+    Properties: 
+      RoleName: StepFunctionsWorkflowExecutionRole
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "states.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+      - PolicyName:
+          # Only for demo purposes, creating IAM policy (verify if makes sense using this permissions)
+          Fn::Sub: "${AWS::StackName}-pytorch-pipeline"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Resource: "*"
+            Action:
+            - "iam:PassRole"
+            Condition:
+              StringEquals:
+                "iam:PassedToService": "sagemaker.amazonaws.com"
+          - Effect: Allow
+            Resource: "*"
+            Action:
+            - "events:PutTargets"
+            - "events:PutRule"
+            - "events:DescribeRule"
+            Resource:
+            - "arn:aws:events:*:*:rule/StepFunctionsGetEventsForSageMakerTrainingJobsRule"
+            - "arn:aws:events:*:*:rule/StepFunctionsGetEventsForSageMakerTransformJobsRule"
+            - "arn:aws:events:*:*:rule/StepFunctionsGetEventsForSageMakerTuningJobsRule"
+            - "arn:aws:events:*:*:rule/StepFunctionsGetEventsForECSTaskRule"
+            - "arn:aws:events:*:*:rule/StepFunctionsGetEventsForBatchJobsRule"
+
+          - Effect: Allow
+            Resource: "*"
+            Action:
+            - "sagemaker:CreateTransformJob"
+            - "sagemaker:DescribeTransformJob"
+            - "sagemaker:StopTransformJob"
+            - "sagemaker:CreateTrainingJob"
+            - "sagemaker:DescribeTrainingJob"
+            - "sagemaker:StopTrainingJob"
+            - "sagemaker:CreateHyperParameterTuningJob"
+            - "sagemaker:DescribeHyperParameterTuningJob"
+            - "sagemaker:StopHyperParameterTuningJob"
+            - "sagemaker:CreateModel"
+            - "sagemaker:CreateEndpointConfig"
+            - "sagemaker:CreateEndpoint"
+            - "sagemaker:DeleteEndpointConfig"
+            - "sagemaker:DeleteEndpoint"
+            - "sagemaker:UpdateEndpoint"
+            - "sagemaker:ListTags"
+            - "lambda:InvokeFunction"
+            - "sqs:SendMessage"
+            - "sns:Publish"
+            - "ecs:RunTask"
+            - "ecs:StopTask"
+            - "ecs:DescribeTasks"
+            - "dynamodb:GetItem"
+            - "dynamodb:PutItem"
+            - "dynamodb:UpdateItem"
+            - "dynamodb:DeleteItem"
+            - "batch:SubmitJob"
+            - "batch:DescribeJobs"
+            - "batch:TerminateJob"
+            - "glue:StartJobRun"
+            - "glue:GetJobRun"
+            - "glue:GetJobRuns"
+            - "glue:BatchStopJobRun"
+
+  SageMakerExecutionRole: 
+    Type: "AWS::IAM::Role"
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "sagemaker.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+      - PolicyName:
+          Fn::Sub: "${AWS::StackName}-sageemr"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Resource: "*"
+            Action:
+            - "elasticmapreduce:ListInstances"
+      - PolicyName:
+          Fn::Sub: "${AWS::StackName}-lambda"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Resource: "*"
+            Action:
+            - "lambda:CreateFunction"
+
+  MLPipelineDemoRepo:
+    Type: AWS::SageMaker::CodeRepository
+    Properties:
+        CodeRepositoryName: MLPipelineDemoRepo
+        GitConfig:
+            RepositoryUrl: https://github.com/marcelokscunha/projects.git
+
+  SageMakerLifeCycleConfig: 
+    Type: "AWS::SageMaker::NotebookInstanceLifecycleConfig"
+    Properties:
+      OnStart:
+        - Content:
+            Fn::Base64: !Sub |
+                #!/bin/bash
+                #set –e
+                pip install seaborn awswrangler
+                # Identify EMR cluster, set up Livy and configure with cluster ID address
+                EMRGLUEIP=`aws emr list-instances --cluster-id ${emrClusterName} --instance-group-types MASTER --region ${AWS::Region} | jq -r '.Instances[0].PrivateIpAddress' `
+
+                echo $(date +%F_%T) 'Using: ${emrClusterName}: ' $EMRGLUEIP
+
+                wget -O /home/ec2-user/SageMaker/.sparkmagic/config.json https://raw.githubusercontent.com/jupyter-incubator/sparkmagic/master/sparkmagic/example_config.json 
+                sed -i -e "s/localhost/$EMRGLUEIP/g" /home/ec2-user/SageMaker/.sparkmagic/config.json
+                # Next line needed to bypass 'failed to register auto_viz' error in recent version
+                sed -i -e 's/"use_auto_viz": true/"use_auto_viz": false/g' /home/ec2-user/SageMaker/.sparkmagic/config.json
+                
+      NotebookInstanceLifecycleConfigName: !Ref SageMakerConfigName
+
+
+  SageMakerNotebookInstance:
+    Type: "AWS::SageMaker::NotebookInstance"
+    Properties:
+      InstanceType:
+        Ref: SageMakerInstanceType
+      RoleArn: !GetAtt SageMakerExecutionRole.Arn
+      SubnetId:  !Ref VPCSubnet
+      NotebookInstanceName: !Ref SageMakerInstanceName
+      LifecycleConfigName: !Ref SageMakerConfigName
+      DefaultCodeRepository: MLPipelineDemoRepo
+      SecurityGroupIds: 
+        - 
+            !Ref SageMakerInstanceSecurityGroup
+          
+Outputs:
+  SageMakerNotebookInstanceId:
+    Value: !Ref SageMakerNotebookInstance
+ 

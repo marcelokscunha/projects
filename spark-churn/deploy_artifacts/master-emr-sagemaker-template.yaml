@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Master template to create an EMR cluster, Glue Crawler and a SageMaker notebook instance with Livy
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Environment Information
+      Parameters:
+      - VPCId
+      - VPCSubnet
+    - Label:
+        default: SageMaker Notebook Parameters
+      Parameters:
+      - SageMakerInstanceName
+      - SageMakerInstanceType
+      - SageMakerLifecycleConfigName
+    - Label:
+        default: EMR Parameters
+      Parameters:
+      - emrInstanceType
+      #- emrReleaseLabel
+      - emrInstanceCount
+      - emrClusterName
+      #- emrKeyName
+      #- emrLogUri
+    - Label:
+        default: Glue Parameters
+      Parameters:
+      - GlueDatabaseName
+      - GlueCrawlerName
+      - DatasetsS3Path
+Parameters:
+  VPCId:
+    Description: VPC in which to launch this stack
+    Type: AWS::EC2::VPC::Id
+  VPCSubnet:
+    Description: Subnet in which to launch this stack 
+    Type: AWS::EC2::Subnet::Id
+  SageMakerInstanceName:
+    Description: Name for the SageMaker notebook (must be unique in account and region)
+    Default: sageglue
+    Type: String
+  SageMakerInstanceType:
+    Description: The type of SageMaker notebook to be provisioned
+    Type: String
+    Default: ml.t3.medium
+    AllowedValues:
+    - ml.t3.medium
+    - ml.t3.large
+    - ml.t3.xlarge
+    - ml.t3.2xlarge
+    - ml.m5.xlarge
+    - ml.m5.2xlarge
+    - ml.m5.4xlarge
+    - ml.m5.10xlarge
+    - ml.m5.16xlarge
+    - ml.p2.xlarge
+    - ml.p2.8xlarge
+    - ml.p2.16xlarge
+    - ml.p3.2xlarge
+    - ml.p3.8xlarge
+    - ml.p3.16xlarge
+  SageMakerLifecycleConfigName:
+    Description: SageMaker Lifecycle ConfigName [NOTE - must be unique in account and region]
+    Type: String
+    Default: gluesageconfig1    
+  emrInstanceType:
+    Description: Choose the instance type for EMR
+    Type: String
+    Default: m4.large
+    AllowedValues:
+    - m4.large
+    - m4.xlarge
+    - m4.2xlarge
+    - m4.4xlarge
+    - m5.xlarge
+    - m5.2xlarge
+    - m5.4xlarge
+    - c4.large
+    - c4.xlarge
+    - c4.2xlarge
+    - c4.4xlarge
+    - c5.xlarge
+    - c5.2xlarge
+    - c5.4xlarge
+  emrInstanceCount:
+    Type: Number
+    Default: 2
+  emrClusterName:
+    Type: String
+    Default: sageemr
+  emrReleaseLabel:
+    Type: String
+    Description: EMR release to use
+    Default: emr-5.15.0
+  # emrLogUri:
+  #  Type: String
+  #  Default: s3://<bucket>/emrlogs/    
+  # emrKeyName:
+  #  Description: Key to use to access EMR
+  #  Type: AWS::EC2::KeyPair::KeyName
+  #  Default: emrkey    
+
+Mappings:
+  AWSInfoRegionMap:
+    sa-east-1:
+      Partition: aws
+      S3EndpointURL: https://s3.amazonaws.com
+    us-east-1:
+      Partition: aws
+      S3EndpointURL: https://s3.amazonaws.com
+    us-east-2:
+      Partition: aws
+      S3EndpointURL: https://s3.amazonaws.com
+    us-west-1:
+      Partition: aws
+      S3EndpointURL: https://s3.amazonaws.com
+    us-west-2:
+      Partition: aws
+      S3EndpointURL: https://s3.amazonaws.com
+Resources:
+  SageMakerInstanceSecurityGroup:  
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 instance security group for SageMaker Notebook
+      VpcId:
+        Ref: VPCId         
+  SageMakerNotebookStack:
+    # Stack for creating notebook instance with Livy
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        SageMakerInstanceType: 
+            Ref: SageMakerInstanceType
+        VPCId:
+          Ref: VPCId
+        VPCSubnet: 
+            Ref: VPCSubnet
+        SageMakerInstanceName:
+            Ref: SageMakerInstanceName
+        SageMakerConfigName:
+            Ref: SageMakerLifecycleConfigName
+        emrClusterName:
+            Fn::GetAtt:
+            - EMRStack
+            - Outputs.EMRClusterId
+        SageMakerInstanceSecurityGroup: !Ref SageMakerInstanceSecurityGroup
+      TemplateURL: https://s3.amazonaws.com/emr-sparkify/deploy_artifacts/sagemaker-notebook-template.yaml
+  EMRStack:
+    # Stack for creating EMR cluster with Livy, Spark
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        InstanceType:       !Ref emrInstanceType
+        InstanceCount:      !Ref emrInstanceCount
+        #ReleaseLabel:       !Ref emrReleaseLabel  
+        emrClusterName:     !Ref emrClusterName
+        #emrLogUri:          !Ref emrLogUri
+        #emrKeyName:        !Ref emrKeyName       
+        VPCId:              !Ref VPCId
+        VPCSubnet:          !Ref VPCSubnet 
+        SageMakerInstanceSecurityGroup: !Ref SageMakerInstanceSecurityGroup
+      TemplateURL: https://s3.amazonaws.com/emr-sparkify/deploy_artifacts/spark-emr-template.yaml
+Outputs:
+  SageMakerNotebookInstanceId: 
+    Value:
+        Fn::GetAtt:
+            - SageMakerNotebookStack
+            - Outputs.SageMakerNotebookInstanceId   
+  EMRClusterId:
+    Value: 
+        Fn::GetAtt:
+          - EMRStack
+          - Outputs.EMRClusterId            
+  
