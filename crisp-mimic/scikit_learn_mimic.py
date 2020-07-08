@@ -3,32 +3,34 @@ from __future__ import print_function
 import argparse
 import os
 import pandas as pd
-import logging
 
 from sklearn.externals import joblib
+
 from sklearn.pipeline import Pipeline
+
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegressionCV
+
 from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, classification_report
+
 from sklearn.model_selection import cross_val_score, train_test_split
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler(sys.stdout))
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
 
+    # Hyperparameters are described here. In this simple example we not including hyperparameters.
+    #parser.add_argument('--MY-HYPERPARM-NAME', type=int, default=-1)
 
-def train(args):
-    '''
-    Main function for initializing SageMaker training in the hosted infrastructure.
-    
-    Parameters
-    ----------
-    args: the parsed input arguments of the script. The objects assigned as attributes of the namespace. It's the populated namespace.
-    
-    See: https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.parse_args
-    '''
+    # Sagemaker specific arguments. Defaults are set in the environment variables.
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+
+    args = parser.parse_args()
 
     # Take the set of files and read them all into a single pandas dataframe
     input_files = [ os.path.join(args.train, file) for file in os.listdir(args.train) ]
@@ -73,31 +75,17 @@ def train(args):
     estimator.fit(X_train, y_train)
 
     # predict class labels for the test set
-    y_pred = estimator.predict(X_test)
+    y_pred = model.predict(X_test)
 
     # generate class probabilities
-    y_prob = estimator.predict_proba(X_test)
-    
-    # generate evaluation metrics
-    logger.info('Accuracy = {}'.format(accuracy_score(y_test, y_pred)))
-    logger.info('AUROC = {}'.format(roc_auc_score(y_test, y_prob[:, 1])))
-                                                              
-    save_model(estimator, args.model_dir)
-                                                              
-def save_model(model, model_dir):
-    '''
-    Function for saving the model in the expected directory for SageMaker.
-    
-    Parameters
-    ----------
-    model: a Scikit-Learn estimator
-    model_dir: A string that represents the path where the training job writes the model artifacts to. After training, artifacts in this directory are uploaded to S3 for model hosting. (this should be the default SageMaker environment variables)
-    '''
-    logger.info("Saving the model.")
-    path = os.path.join(model_dir, 'model.pth')
-                                                              
+    y_prob = model.predict_proba(X_test)
+
+#     # generate evaluation metrics
+#     print('Accuracy = {}'.format(accuracy_score(y_test, y_pred)))
+#     print('AUROC = {}'.format(roc_auc_score(y_test, y_prob[:, 1])))
+
     # Print the coefficients of the trained classifier, and save the coefficients
-    joblib.dump(model, os.path.join(model_dir, "model.joblib"))
+    joblib.dump(estimator, os.path.join(args.model_dir, "model.joblib"))
 
 
 def model_fn(model_dir):
@@ -107,21 +95,3 @@ def model_fn(model_dir):
     """
     estimator = joblib.load(os.path.join(model_dir, "model.joblib"))
     return estimator
-
-
-# Main script entry for SageMaker to run when initializing training
-                                                              
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-
-    # Hyperparameters are described here. In this simple example we not including hyperparameters.
-    #parser.add_argument('--MY-HYPERPARM-NAME', type=int, default=-1)
-
-    # Sagemaker specific arguments. Defaults are set in the environment variables.
-    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
-    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
-    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
-
-    args = parser.parse_args()
-                                                              
-    train(args)
