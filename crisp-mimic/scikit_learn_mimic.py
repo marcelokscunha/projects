@@ -7,7 +7,7 @@ import numpy as np
 import logging
 import sys
 
-from sklearn.externals import joblib
+import joblib
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
@@ -83,8 +83,8 @@ def train(args):
     y_prob = estimator.predict_proba(X_test)
     
     # generate evaluation metrics
-    logger.info('Accuracy = {}'.format(accuracy_score(y_test, y_pred)))
-    logger.info('AUROC = {}'.format(roc_auc_score(y_test, y_prob[:, 1])))
+    logger.info('Test Accuracy: {};'.format(accuracy_score(y_test, y_pred)))
+    logger.info('Test AUROC: {};'.format(roc_auc_score(y_test, y_prob[:, 1])))
                                                               
     save_model(estimator, args.model_dir)
                                                               
@@ -98,7 +98,6 @@ def save_model(model, model_dir):
     model_dir: A string that represents the path where the training job writes the model artifacts to. After training, artifacts in this directory are uploaded to S3 for model hosting. (this should be the default SageMaker environment variables)
     '''
     logger.info("Saving the model.")
-    path = os.path.join(model_dir, 'model.pth')
                                                               
     # Print the coefficients of the trained classifier, and save the coefficients
     joblib.dump(model, os.path.join(model_dir, "model.joblib"))
